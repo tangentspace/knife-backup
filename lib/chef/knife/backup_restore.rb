@@ -161,10 +161,16 @@ module ServerBackup
       ui.info "=== Restoring cookbooks ==="
       cookbooks = Dir.glob(File.join(config[:backup_dir], "cookbooks", '*'))
       cookbooks.each do |cb|
+
+        # Chef 12 only uploads the latest cookbook when multiple versions exist
+        # in the same repo, workaround by uploading from a temp directory.
+        temp_cb_dir = File.join(config[:backup_dir], "/temp_cb_dir")
+        Dir.mkdir(temp_cb_dir)
+
         full_cb = File.expand_path(cb)
         cb_name = File.basename(cb)
         cookbook = cb_name.reverse.split('-',2).last.reverse
-        full_path = File.join(File.dirname(full_cb), cookbook)
+        full_path = File.join(temp_cb_dir, cookbook)
 
         begin
           File.symlink(full_cb, full_path)
@@ -178,6 +184,7 @@ module ServerBackup
           handle_error 'cookbook', cb_name, e
         ensure
           File.unlink(full_path)
+          FileUtils.rm_rf(temp_cb_dir)
         end
       end
     end
